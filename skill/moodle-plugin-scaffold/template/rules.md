@@ -10,7 +10,7 @@ timestamp: 2026-06-29
 
 ## Code & Security
 
-- **Every PHP file** (except entry points) must start with: `defined('MOODLE_INTERNAL') || die();`
+- **Every PHP file** must start with `defined('MOODLE_INTERNAL') || die();`, except: entry-point pages, files without side-effects (a lone class/interface/trait definition — the official Moodle exception, see https://moodledev.io/general/development/policies/codingstyle#require--include), and in practice also `db/install.php`/`db/upgrade.php` (contain only an install/upgrade function; nearly all Moodle core plugins deliberately omit the check there — adding it makes the Moodle PHPCS check fail)
 - **Never trust user input** — always use `required_param()` / `optional_param()`
 - **Never write raw SQL** — always use Moodle DML API (`$DB`)
 - **Never echo raw HTML with user data** — use Mustache templates + `format_string()` / `s()`

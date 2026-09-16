@@ -208,7 +208,7 @@ See: https://github.com/FMCorz/mdk
 Before uploading to moodle.org/plugins:
 
 - [ ] All code follows Moodle PHP Coding Standards
-- [ ] Every PHP file starts with `defined('MOODLE_INTERNAL') || die();` (except entry points)
+- [ ] Every PHP file starts with `defined('MOODLE_INTERNAL') || die();` (except entry points, side-effect-free class/interface/trait files, and `db/install.php`/`db/upgrade.php`)
 - [ ] `lang/en/[FRANKENSTYLE].php` is complete and contains all user-facing strings
 - [ ] No external network requests without user/admin opt-in
 - [ ] Privacy API implemented (at least null provider)

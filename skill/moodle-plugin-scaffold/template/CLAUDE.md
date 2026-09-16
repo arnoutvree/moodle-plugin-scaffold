@@ -115,7 +115,7 @@ If this plugin's design and delivery follows a spec-driven process (written spec
 - Never modify Moodle core files
 - Never use deprecated Moodle functions without explicit instruction (check https://moodledev.io/docs/5.0/guides/deprecation)
 - Never overwrite tables, capabilities, or settings not created by this plugin
-- Always start every PHP file (except entry-point pages with `require_once('../../config.php')`) with `defined('MOODLE_INTERNAL') || die();`
+- Always start every PHP file with `defined('MOODLE_INTERNAL') || die();`, except entry-point pages (`require_once('../../config.php')`), files without side-effects (a lone class/interface/trait — the official Moodle exception), and `db/install.php`/`db/upgrade.php` (install/upgrade-only files; nearly all Moodle core plugins omit the check there)
 
 **DATABASE (Moodle DML)**
 - Never write raw SQL — always use the `$DB` global (`get_record`, `get_records_sql`, `insert_record`, etc.)

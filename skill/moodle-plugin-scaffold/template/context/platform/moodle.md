@@ -423,7 +423,7 @@ $tasks = [
 - Spaces, not tabs
 - Brace on same line: `if (...) {`
 - Class names: `ClassName`, method names: `methodName()`, constants: `CONSTANT`
-- Always use `defined('MOODLE_INTERNAL') || die();` at the top of PHP files
+- Always use `defined('MOODLE_INTERNAL') || die();` at the top of PHP files, except entry points, side-effect-free class/interface/trait files, and `db/install.php`/`db/upgrade.php` (nearly all Moodle core plugins omit the check there)
 - Add PHPDoc to all classes and public methods
 
 **JS: AMD + ESLint**
