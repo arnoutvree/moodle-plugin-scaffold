@@ -12,13 +12,8 @@ timestamp: 2026-06-29
 
 ## Overview
 
-Carried over from [`intent.md`](intent.md) once that file is done.
-
-**What problem does this plugin solve?**
-- [Fill in main purpose — carried over from intent.md]
-
-**Target users:**
-- [Student / Teacher / Manager / Other roles — carried over from intent.md]
+See [`intent.md`](intent.md) for the problem statement, target users and constraints.
+This file covers only the what and how: features, user flows, data model and capabilities below.
 
 ---
 
