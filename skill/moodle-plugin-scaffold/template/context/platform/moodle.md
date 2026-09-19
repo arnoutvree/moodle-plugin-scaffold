@@ -19,21 +19,31 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = '[FRANKENSTYLE]';           // Always: [PLUGIN_TYPE]_[PLUGIN_NAME]
 $plugin->version = 2025052000;                    // Format: YYYYMMDDXX (XX = day sequence: 00, 01, 02...)
-$plugin->requires = 2025041400;                   // Minimum Moodle version (e.g., 4.5 = 2025041400)
+$plugin->requires = 2024100700;                   // Minimum Moodle version (here 4.5 LTS — look it up, see table below)
 $plugin->release = '1.0.0';                       // Semantic version string
 $plugin->maturity = MATURITY_STABLE;              // or ALPHA, BETA, RC
 $plugin->copyright = '(c) 2025 [Your Organization]';
 $plugin->license = 'GPL-3.0-or-later';
 
 // Optional but recommended:
-$plugin->supported = [4.5, 5.0, 5.1];             // Versions this plugin targets
+$plugin->supported = [405, 502];                  // RANGE of exactly two integers [lowest, highest] — never a list
 ```
 
 **Rules:**
 - `$plugin->version` is **YYYYMMDDXX** — increment `XX` for multiple releases the same day (00, 01, 02, ...)
-- `$plugin->requires` matches the **minimum Moodle version** you support (e.g., 4.5 LTS)
+- `$plugin->requires` matches the **minimum Moodle version** you support. Look the number up rather than guessing it: the date encoded in it is the release date of that Moodle version, not of your plugin.
+
+| Moodle | Version number | Released |
+|---|---|---|
+| 4.5 (LTS) | `2024100700` | 7 October 2024 |
+| 5.0 | `2025041400` | 14 April 2025 |
+| 5.1 | `2025100600` | 6 October 2025 |
+| 5.2 | `2026042000` | 20 April 2026 |
+
+- `$plugin->supported` is a **range of exactly two integers**, `[lowest, highest]` — versions in between are included automatically. A list such as `[4.5, 5.0, 5.1]` is not "more explicit", it is invalid: `core\plugininfo\base::load_disk_version()` requires `count() == 2` with `is_int()` on both elements, and throws a `coding_exception` otherwise. That exception surfaces in `all_plugins_ok()`, so a single malformed declaration breaks the upgrade check for **every plugin on the site**, not just yours.
 - Maturity levels: `MATURITY_ALPHA` → `MATURITY_BETA` → `MATURITY_RC` → `MATURITY_STABLE`
 - Never include side effects or function calls in `version.php`
+- After any change to `version.php`, actually run an upgrade (`php admin/cli/upgrade.php`) before committing. `php -l` will not catch these mistakes: the syntax is valid, the meaning is wrong.
 
 ---
 
