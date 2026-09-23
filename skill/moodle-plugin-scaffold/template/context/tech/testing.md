@@ -188,7 +188,7 @@ $item = $this->getDataGenerator()->get_plugin_generator('[FRANKENSTYLE]')->creat
 
 ## Fixtures per test scenario (traceability back to specs.md)
 
-Each test scenario in `user-stories.md` (Given/When/Then) gets its own generator method, identifiable by the scenario ID — so test code can be traced back to the scenario without grepping, and its status updated there once the test passes (see [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development), Phase 2b/4a, if you're following that process).
+Each test scenario in `user-stories.md` (Given/When/Then) gets its own generator method, identifiable by the scenario ID — so test code can be traced back to the scenario without grepping, and the task's score in `tasks.md` updated once the test passes (see [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development), Phase 2c/4c, if you're following that process).
 
 **Naming:** `scenario_<number>_<slug>()`, e.g. `scenario_1_1_enrolment_still_active()` for test scenario 1.1.
 
@@ -231,7 +231,7 @@ public function test_scenario_1_1_enrolment_still_active(): void {
 }
 ```
 
-**Traceability table** — illustrates the fixture ↔ test pattern. The authoritative, full progress (status per scenario: open/in progress/passed/failed) lives in `user-stories.md`, alongside `specs.md` — update that table once a scenario is implemented here, not this standalone illustration:
+**Traceability table** — illustrates the fixture ↔ test pattern. The authoritative progress lives in the score table in `tasks.md` (Phase 4c) — update that once a scenario is implemented here, not this standalone illustration:
 
 | Test scenario (user-stories.md) | Fixture | Test |
 |---|---|---|

@@ -10,7 +10,7 @@ It's a single markdown instruction file plus its bundled template, so it works w
 
 - **`CLAUDE.md`** — the entry point: plugin identity table, a "when to read which file" index, and the behavioral rules an AI agent should follow while working on the plugin (Moodle-first, simplicity-first, surgical changes, absolute prohibitions around security/capabilities/database changes).
 - **`identity.md` / `rules.md`** — the AI's expertise/focus/approach for this specific project, and its non-negotiable constraints.
-- **`intent.md` / `specs.md` / `user-stories.md`** — a problem statement → spec → living test-scenario-progress chain, ready to fill in (pairs well with [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development) if you want the full spec-driven process around it).
+- **`intent.md` / `specs.md` / `user-stories.md` / `plan.md` / `tasks.md`** — a problem statement → spec → test scenarios → technical plan → scored build order chain, ready to fill in (pairs well with [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development) if you want the full spec-driven process around it).
 - **`context/tech/architecture.md`** — the complete plugin folder structure, entry points, load order, naming conventions.
 - **`context/tech/capabilities.md`** — capability design, role archetypes, the permission-safety checklist for anything touching `db/access.php`.
 - **`context/tech/database-schema.md`** — DML patterns, `install.xml`/`upgrade.php` conventions.
@@ -56,7 +56,7 @@ It asks a handful of questions one at a time (plugin type, name, roles, descript
 
 ## Related
 
-- [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development) — the spec-driven process (problem → spec → approval → build → independent review → release) this scaffold's `intent.md`/`specs.md`/`user-stories.md` are designed to feed into.
+- [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development) — the spec-driven process (problem → spec → approval → build → independent review → release) this scaffold's `intent.md`/`specs.md`/`user-stories.md`/`plan.md`/`tasks.md` are designed to feed into.
 - [`moodle-plugin-vibe-review`](https://github.com/arnoutvree/moodle-plugin-vibe-review) — reviews the code this scaffold (and everything built on top of it) produces, against Moodle's coding, security and API conventions.
 
 ## License

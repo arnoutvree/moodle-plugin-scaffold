@@ -48,7 +48,7 @@ If WebFetch fails or isn't available: say so explicitly and ask for the versions
 ## Phase 2 — copy and fill in the context structure
 
 1. Copy from this skill's own `template/` folder into the new project folder:
-   - `CLAUDE.md`, `identity.md`, `rules.md`, `intent.md`, `specs.md`, `user-stories.md`
+   - `CLAUDE.md`, `identity.md`, `rules.md`, `intent.md`, `specs.md`, `user-stories.md`, `plan.md`, `tasks.md`
    - the full `context/` folder (`tech/`, `platform/`, `software/`, `workflows/`)
    - **not** the `SKILL.md` itself, no `.git/`, no `.DS_Store`
    - The new project folder gets its **own, fresh** git history — never bring along this skill's own `.git/`.

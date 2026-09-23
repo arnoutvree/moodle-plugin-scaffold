@@ -27,7 +27,7 @@ This file covers only the what and how: features, user flows, data model and cap
 
 ## User Stories & Test Scenarios
 
-See [`user-stories.md`](user-stories.md) — a separate file, since it stays live during build and test (a progress table per scenario), while this file is done once the build starts.
+See [`user-stories.md`](user-stories.md) — a separate file, since it stays in use as a reference long after release (regression checks), while this file is done once the build starts.
 
 ---
 
@@ -83,5 +83,5 @@ erDiagram
 - **PHPUnit tests:** [What logic needs testing?]
 - **Behat scenarios:** [What user workflows need testing?]
 
-Concrete test scenarios (Given/When/Then) and their progress live in [`user-stories.md`](user-stories.md), not here.
+Concrete test scenarios (Given/When/Then) live in [`user-stories.md`](user-stories.md), their progress in [`tasks.md`](tasks.md) — not here.
 
