@@ -48,7 +48,7 @@ If this plugin's design and delivery follows a spec-driven process (written spec
 |---|---|
 | [identity.md](identity.md) | AI expertise, focus, and approach for this project |
 | [rules.md](rules.md) | Strict boundaries and non-negotiable constraints |
-| [intent.md](intent.md) | Problem statement, target users, known constraints — fill in before specs.md |
+| [intent.md](intent.md) | Problem statement, target users, success criteria, known constraints — fill in before specs.md |
 | [specs.md](specs.md) | Project requirements, features, user flows, data model |
 | [context/tech/architecture.md](context/tech/architecture.md) | Plugin folder structure, entry points, namespacing |
 | [context/tech/database-schema.md](context/tech/database-schema.md) | Database design, DML patterns, upgrade strategy |
