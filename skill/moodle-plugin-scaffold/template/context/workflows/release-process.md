@@ -1,6 +1,7 @@
 ---
 type: process
 created: 2026-06-26
+updated: 2026-10-12
 timestamp: 2026-06-26
 ---
 # Release process — [FRANKENSTYLE]
@@ -42,7 +43,7 @@ $plugin->release = '1.0.0';     // Human version
       vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
 [ ] All Behat tests pass (if tests exist)
-      php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
+      php public/admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]   # Moodle 5.0 and earlier: no public/
 
 [ ] Code style passes with 0 errors
       moodle-plugin-ci phpcs
@@ -145,7 +146,7 @@ $plugin->release = '1.0.0';     // Human version
 vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
 # Acceptance tests (if applicable)
-php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
+php public/admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]   # Moodle 5.0 and earlier: no public/
 
 # Lint
 ./vendor/bin/phpcs [PLUGIN_MAPNAME]/
@@ -256,14 +257,17 @@ Automate the pre-release checklist above with [`moodlehq/moodle-plugin-ci`](http
 
 ```yaml
 # .github/workflows/ci.yml
+# Based on gha.dist.yml of moodlehq/moodle-plugin-ci (4.5.11). Check that file for changes.
 name: CI
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       mysql:
-        image: mysql:8.4            # same engine as production
+        image: ${{ matrix.database == 'mysqli' && 'mysql:8.4' || '' }}   # same engine as production
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: "true"
         ports: ["3306:3306"]
@@ -271,60 +275,89 @@ jobs:
           --health-cmd="mysqladmin ping" --health-interval=10s
           --health-timeout=5s --health-retries=5
       postgres:
-        image: postgres:16
+        image: ${{ matrix.database == 'pgsql' && 'postgres:17' || '' }}
         env:
           POSTGRES_USER: 'postgres'
           POSTGRES_HOST_AUTH_METHOD: 'trust'
         ports: ["5432:5432"]
-        options: >-
-          --health-cmd="pg_isready" --health-interval=10s
-          --health-timeout=5s --health-retries=5
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
     strategy:
       fail-fast: false
       matrix:
         include:
           # Lowest and highest Moodle branch from $plugin->requires / $plugin->supported.
-          # Check branch names and PHP versions at moodledev.io/general/releases.
+          # Check branch names and PHP versions at moodledev.io/general/releases
+          # (Moodle 5.3 needs PHP 8.3 or higher; 4.5 runs on 8.1-8.3).
           - { php: '8.2', moodle-branch: 'MOODLE_405_STABLE', database: 'mysqli' }
           - { php: '8.3', moodle-branch: '[HIGHEST_MOODLE_BRANCH]', database: 'mysqli' }
           - { php: '8.3', moodle-branch: '[HIGHEST_MOODLE_BRANCH]', database: 'pgsql' }
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository code
+        uses: actions/checkout@v6
         with:
           path: plugin
+          persist-credentials: false
 
-      - uses: shivammathur/setup-php@v2
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: pgsql, mysqli, zip, gd, intl, soap
-          ini-values: max_input_vars=5000
+          ini-values: max_input_vars=5000, opcache.enable_cli=1
           coverage: none            # use pcov in a separate run to measure coverage
           tools: composer
 
-      - name: Install moodle-plugin-ci
+      - name: Initialise moodle-plugin-ci
         run: |
-          composer create-project -n --no-dev --ignore-platform-reqs moodlehq/moodle-plugin-ci ci ^4
-          echo $(cd ci; pwd)/bin >> $GITHUB_PATH
-          echo $(cd ci; pwd)/vendor/bin >> $GITHUB_PATH
+          composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
+          echo $(cd ci/bin; pwd) >> $GITHUB_PATH
+          echo $(cd ci/vendor/bin; pwd) >> $GITHUB_PATH
+          sudo locale-gen en_AU.UTF-8
+          echo "NVM_DIR=$HOME/.nvm" >> $GITHUB_ENV
 
-      - name: Install Moodle + plugin
-        run: moodle-plugin-ci install -vvv --plugin ./plugin --db-host=127.0.0.1
+      - name: Install moodle-plugin-ci
+        run: moodle-plugin-ci install --plugin ./plugin --db-host=127.0.0.1
         env:
-          DB: ${{ matrix.database }}
+          DB: ${{ matrix.database }}      # mysqli = MySQL
           MOODLE_BRANCH: ${{ matrix.moodle-branch }}
 
       # Fast to slow, same order as the Definition of done. phpmd advises and does not block.
       - run: moodle-plugin-ci phplint
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci validate
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci phpcs --max-warnings 0
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci phpmd
         continue-on-error: true
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci phpdoc --max-warnings 0
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci savepoints
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci mustache
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci grunt --max-lint-warnings 0
+        if: ${{ !cancelled() }}
       - run: moodle-plugin-ci phpunit --fail-on-warning
-      - run: moodle-plugin-ci behat --profile chrome --auto-rerun 2
+        if: ${{ !cancelled() }}
+      - name: Behat features
+        id: behat
+        run: moodle-plugin-ci behat --profile chrome --scss-deprecations
+        if: ${{ !cancelled() }}
+
+      - name: Upload Behat faildump
+        if: ${{ failure() && steps.behat.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: Behat Faildump (${{ join(matrix.*, ', ') }})
+          path: ${{ github.workspace }}/moodledata/behat_dump
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Mark cancelled jobs as failed
+        if: ${{ cancelled() }}
+        run: exit 1
 ```
 
 Avetica hosts plugins on GitLab first: use the same commands, services and matrix in `.gitlab-ci.yml`. Only the wrapper (runner, services syntax) differs, not the list of checks.

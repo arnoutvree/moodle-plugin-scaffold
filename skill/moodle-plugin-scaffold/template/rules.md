@@ -3,6 +3,7 @@ name: Strict Rules for [FRANKENSTYLE]
 description: Non-negotiable constraints and boundaries for this plugin
 type: rules
 created: 2026-06-29
+updated: 2026-10-12
 timestamp: 2026-06-29
 ---
 

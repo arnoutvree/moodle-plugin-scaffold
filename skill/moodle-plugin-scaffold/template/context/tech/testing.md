@@ -1,6 +1,7 @@
 ---
 type: context
 created: 2026-06-26
+updated: 2026-10-12
 timestamp: 2026-06-26
 ---
 # Testing — [FRANKENSTYLE]
@@ -11,9 +12,10 @@ This file describes the testing strategy for this plugin: PHPUnit unit tests, Be
 
 ## PHPUnit setup
 
-**Initialization** (once per Moodle install). First set `$CFG->phpunit_prefix` and `$CFG->phpunit_dataroot` to values that differ from the live site in `config.php`; PHPUnit then runs in its own tables and data directory and does not touch the site data. Run `init.php` again after adding a new test class or generator.
+**Initialization** (once per Moodle install). First set `$CFG->phpunit_prefix` and `$CFG->phpunit_dataroot` to values that differ from the live site in `config.php`; PHPUnit then runs in its own tables and data directory and does not touch the site data. Run `init.php` again after adding a new test class or generator; on Moodle 5.3 and later `util.php --upgrade` brings the test environment up to date without a full re-initialisation.
 ```bash
-php admin/tool/phpunit/cli/init.php
+php public/admin/tool/phpunit/cli/init.php    # Moodle 5.1 and later (code lives in public/)
+php admin/tool/phpunit/cli/init.php           # Moodle 5.0 and earlier
 ```
 
 **Test file structure:**
@@ -77,11 +79,11 @@ No `defined('MOODLE_INTERNAL') || die();` in a test file that only holds a class
 - Use assertions: `$this->assertTrue()`, `$this->assertSame()`, `$this->assertEquals()`; expect failures with `$this->expectException(...)` (call it before the line that throws)
 - Switch user with `$this->setUser()`, `$this->setAdminUser()` or `$this->setGuestUser()` to test allowed and denied cases
 
-**Supporting Moodle 4.5 (PHPUnit 9.6) and 5.x (PHPUnit 11.5) at once:** put the PHPUnit attributes (`#[CoversClass(...)]`, `#[CoversNothing]`, `#[DataProvider('...')]`) **and** the doc-comment tags (`@covers`, `@dataProvider`) on the same class or method. PHPUnit 9.6 ignores attributes, so with attributes only the data providers hand over no arguments (`ArgumentCountError`) and the phpcs sniff `moodle.PHPUnit.TestCaseCovers` still looks for `@covers`. PHPUnit 11.5 ignores the doc-comment tags as soon as an attribute is present, so both together give no deprecations.
+**Supporting Moodle 4.5 (PHPUnit 9.6) and 5.x (PHPUnit 11.x) at once:** put the PHPUnit attributes (`#[CoversClass(...)]`, `#[CoversNothing]`, `#[DataProvider('...')]`) **and** the doc-comment tags (`@covers`, `@dataProvider`) on the same class or method. PHPUnit 9.6 ignores attributes, so with attributes only the data providers hand over no arguments (`ArgumentCountError`) and the phpcs sniff `moodle.PHPUnit.TestCaseCovers` still looks for `@covers`. PHPUnit 11.x ignores the doc-comment tags as soon as an attribute is present, so both together give no deprecations.
 
 **Keep test classes small.** phpmd flags `TooManyPublicMethods`/`TooManyMethods` in test classes with many scenarios. Decide at the start: either one test class per scenario group (small classes, no suppression), or one class per specification section (scenario numbering stays readable) with `@SuppressWarnings` in the class docblock. In the second case `moodle.Commenting.ValidTags.Invalid` rejects that tag, so wrap the class header in `phpcs:disable`/`phpcs:enable`.
 
-**Run tests:**
+**Run tests:** (Moodle 5.1 and later: plugin paths start with `public/`, for example `public/[PLUGIN_MAPNAME]/tests/[feature]_test.php`)
 ```bash
 # All tests for this plugin (the testsuite exists after init.php/util.php --buildconfig)
 vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
@@ -102,7 +104,8 @@ vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite --display-notices --disp
 
 **Initialization** (once per Moodle install). Set `$CFG->behat_wwwroot`, `$CFG->behat_prefix` and `$CFG->behat_dataroot` in `config.php` first. Run `init.php` again after adding a feature file or step definition.
 ```bash
-php admin/tool/behat/cli/init.php
+php public/admin/tool/behat/cli/init.php     # Moodle 5.1 and later
+php admin/tool/behat/cli/init.php            # Moodle 5.0 and earlier
 ```
 
 **Feature file structure:**
@@ -157,16 +160,16 @@ class behat_[FRANKENSTYLE] extends behat_base {
 }
 ```
 
-**Run Behat tests:**
+**Run Behat tests:** (Moodle 5.0 and earlier: leave out `public/`)
 ```bash
 # All scenarios tagged with plugin
-php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
+php public/admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
 
 # Specific feature file
-php admin/tool/behat/cli/run.php [PLUGIN_MAPNAME]/tests/behat/[feature].feature
+php public/admin/tool/behat/cli/run.php [PLUGIN_MAPNAME]/tests/behat/[feature].feature
 
 # Specific scenario
-php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE] --name="scenario name"
+php public/admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE] --name="scenario name"
 ```
 
 ---

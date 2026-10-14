@@ -1,7 +1,7 @@
 ---
 type: navigation
 created: 2026-06-26
-updated: 2026-08-17
+updated: 2026-10-12
 timestamp: 2026-08-17
 ---
 # CLAUDE.md — [FRANKENSTYLE]

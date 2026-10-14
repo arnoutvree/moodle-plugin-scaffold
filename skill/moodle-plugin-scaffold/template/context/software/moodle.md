@@ -1,6 +1,7 @@
 ---
 type: reference
 created: 2026-06-26
+updated: 2026-10-12
 timestamp: 2026-06-26
 ---
 # Moodle — official references
@@ -177,7 +178,7 @@ vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
 **Behat:** Acceptance tests (browser-based)
 ```bash
-php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
+php public/admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]   # Moodle 5.0 and earlier: no public/
 ```
 
 **Static checks:** `moodle-plugin-ci` runs the full list in [context/tech/testing.md](../tech/testing.md) (Definition of done); do not call `phpcs` on its own.

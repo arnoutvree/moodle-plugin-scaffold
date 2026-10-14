@@ -1,6 +1,7 @@
 ---
 type: process
 created: 2026-06-26
+updated: 2026-10-12
 timestamp: 2026-06-26
 ---
 # Coding standards — [FRANKENSTYLE]
