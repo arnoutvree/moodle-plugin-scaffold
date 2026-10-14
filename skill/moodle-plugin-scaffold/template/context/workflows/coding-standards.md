@@ -291,23 +291,26 @@ npx eslint amd/src/
 
 ## Static analysis — moodle-plugin-ci (the standard toolchain)
 
-Don't hand-roll separate phpcs/phpstan/phpmd invocations — [`moodlehq/moodle-plugin-ci`](https://github.com/moodlehq/moodle-plugin-ci) bundles the whole Moodle-specific quality toolchain (Moodle Coding Standard via phpcs, PHP Mess Detector, PHPDoc checker, PHPStan/Psalm-equivalent static checks, PHPUnit, Behat, grunt/eslint) and is what Moodle core's own CI and most maintained community plugins use.
+Don't hand-roll separate phpcs/phpstan/phpmd invocations — [`moodlehq/moodle-plugin-ci`](https://github.com/moodlehq/moodle-plugin-ci) bundles the whole Moodle-specific quality toolchain (Moodle Coding Standard via phpcs, PHP Mess Detector, PHPDoc checker, PHPUnit, Behat, grunt/eslint) and is what Moodle core's own CI and most maintained community plugins use.
 
 ```bash
 # Install once
 composer create-project -n --no-dev --ignore-platform-reqs moodlehq/moodle-plugin-ci ci ^4
 
-# Run the full suite against this plugin
+# Run the full suite against this plugin, fast to slow
 moodle-plugin-ci phplint
+moodle-plugin-ci validate
 moodle-plugin-ci phpcs
 moodle-plugin-ci phpmd
 moodle-plugin-ci phpdoc
-moodle-plugin-ci validate
+moodle-plugin-ci savepoints
+moodle-plugin-ci mustache
+moodle-plugin-ci grunt
 moodle-plugin-ci phpunit
 moodle-plugin-ci behat
 ```
 
-Start with `phpcs`/`phplint`/`validate` passing cleanly before adding `phpunit`/`behat` to a CI gate — see [context/workflows/release-process.md](release-process.md) for a ready-to-use GitHub Actions workflow.
+Start with `phplint`/`validate`/`phpcs` passing cleanly before adding `phpunit`/`behat` to a CI gate. Which checks are required and which block is decided in [context/tech/testing.md](../tech/testing.md) (Definition of done) — see [context/workflows/release-process.md](release-process.md) for a ready-to-use GitHub Actions workflow.
 
 ---
 
@@ -364,55 +367,21 @@ Added stuff
 - [x] Behat tests (if UI-affecting)
 - [x] `version.php` bump (if database or capability change)
 - [x] `db/upgrade.php` step (if schema or capability change)
+- [x] `amd/build/` (compiled JavaScript; Moodle does not build it on install, and `moodle-plugin-ci grunt` fails when it is out of date)
 
 ### What NOT to commit
 
 - [ ] IDE config files (.idea/, .vscode/)
 - [ ] OS files (.DS_Store)
 - [ ] node_modules/
-- [ ] build outputs (amd/build/)
-- [ ] test fixtures or temp data
+- [ ] temporary test output and scratch data (`tests/fixtures/` files that tests need do belong in git)
 - [ ] .env files or credentials
 
 ---
 
 ## Testing discipline
 
-### PHPUnit
-
-```php
-<?php
-namespace [FRANKENSTYLE]\tests;
-
-class item_manager_test extends \advanced_testcase {
-    public function test_create_item(): void {
-        $this->resetAfterTest();
-        
-        $manager = new \[FRANKENSTYLE]\item_manager();
-        $item = $manager->create_item(['name' => 'Test']);
-        
-        $this->assertIsObject($item);
-        $this->assertEquals('Test', $item->name);
-    }
-}
-```
-
-**Minimum coverage:** 80% of non-trivial code paths.
-
-### Behat
-
-```gherkin
-@[FRANKENSTYLE] @plugin
-Feature: Manage course items
-
-  Scenario: Teacher creates an item
-    Given I log in as "teacher1"
-    When I visit the items page
-    And I click "Create item"
-    And I fill "Name" with "New Item"
-    And I click "Save"
-    Then I should see "Item created successfully"
-```
+Test setup, examples, the Definition of done and the coverage rule live in one place: [context/tech/testing.md](../tech/testing.md). Do not keep test examples here.
 
 ---
 

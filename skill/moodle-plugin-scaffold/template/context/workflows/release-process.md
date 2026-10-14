@@ -35,14 +35,17 @@ $plugin->release = '1.0.0';     // Human version
 ### Code quality
 
 ```
+[ ] Every check in the Definition of done passes on the exact commit you release
+      (single list: context/tech/testing.md, "Definition of done"; run via moodle-plugin-ci)
+
 [ ] All PHPUnit tests pass
-      vendor/bin/phpunit --filter [FRANKENSTYLE]
+      vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
 [ ] All Behat tests pass (if tests exist)
       php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
 
-[ ] Linting passes (no code style violations)
-      ./vendor/bin/phpcs [PLUGIN_MAPNAME]/
+[ ] Code style passes with 0 errors
+      moodle-plugin-ci phpcs
 
 [ ] No debug output left in code
       - No var_dump(), print_r(), console.log()
@@ -139,7 +142,7 @@ $plugin->release = '1.0.0';     // Human version
 
 ```bash
 # Unit tests
-vendor/bin/phpunit --filter [FRANKENSTYLE]
+vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
 # Acceptance tests (if applicable)
 php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
@@ -249,7 +252,7 @@ Add to CHANGELOG or release history:
 
 ## CI/CD (GitHub Actions via moodle-plugin-ci)
 
-Automate the pre-release checklist above with [`moodlehq/moodle-plugin-ci`](https://github.com/moodlehq/moodle-plugin-ci) instead of running each tool by hand. This is the same toolchain Moodle core itself uses — see [context/workflows/coding-standards.md](coding-standards.md) (Static analysis section) for what it bundles.
+Automate the pre-release checklist above with [`moodlehq/moodle-plugin-ci`](https://github.com/moodlehq/moodle-plugin-ci) instead of running each tool by hand. This is the same toolchain Moodle core itself uses. Which checks must run, and which of them block, is decided in [context/tech/testing.md](../tech/testing.md) (Definition of done); the workflow below runs that list.
 
 ```yaml
 # .github/workflows/ci.yml
@@ -257,22 +260,45 @@ name: CI
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    services:
+      mysql:
+        image: mysql:8.4            # same engine as production
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: 'postgres'
+          POSTGRES_HOST_AUTH_METHOD: 'trust'
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready" --health-interval=10s
+          --health-timeout=5s --health-retries=5
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3']
-        moodle-branch: ['MOODLE_405_STABLE']   # verify against moodledev.io/general/releases
-        database: ['pgsql', 'mariadb']
+        include:
+          # Lowest and highest Moodle branch from $plugin->requires / $plugin->supported.
+          # Check branch names and PHP versions at moodledev.io/general/releases.
+          - { php: '8.2', moodle-branch: 'MOODLE_405_STABLE', database: 'mysqli' }
+          - { php: '8.3', moodle-branch: '[HIGHEST_MOODLE_BRANCH]', database: 'mysqli' }
+          - { php: '8.3', moodle-branch: '[HIGHEST_MOODLE_BRANCH]', database: 'pgsql' }
     steps:
       - uses: actions/checkout@v4
         with:
           path: plugin
 
-      - uses: actions/setup-php@v4
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: pgsql, zip, gd, xmlrpc, soap, intl
+          extensions: pgsql, mysqli, zip, gd, intl, soap
+          ini-values: max_input_vars=5000
+          coverage: none            # use pcov in a separate run to measure coverage
           tools: composer
 
       - name: Install moodle-plugin-ci
@@ -287,13 +313,21 @@ jobs:
           DB: ${{ matrix.database }}
           MOODLE_BRANCH: ${{ matrix.moodle-branch }}
 
+      # Fast to slow, same order as the Definition of done. phpmd advises and does not block.
       - run: moodle-plugin-ci phplint
-      - run: moodle-plugin-ci phpcs
-      - run: moodle-plugin-ci phpdoc
       - run: moodle-plugin-ci validate
-      - run: moodle-plugin-ci phpunit
-      - run: moodle-plugin-ci behat --profile chrome
+      - run: moodle-plugin-ci phpcs --max-warnings 0
+      - run: moodle-plugin-ci phpmd
+        continue-on-error: true
+      - run: moodle-plugin-ci phpdoc --max-warnings 0
+      - run: moodle-plugin-ci savepoints
+      - run: moodle-plugin-ci mustache
+      - run: moodle-plugin-ci grunt --max-lint-warnings 0
+      - run: moodle-plugin-ci phpunit --fail-on-warning
+      - run: moodle-plugin-ci behat --profile chrome --auto-rerun 2
 ```
+
+Avetica hosts plugins on GitLab first: use the same commands, services and matrix in `.gitlab-ci.yml`. Only the wrapper (runner, services syntax) differs, not the list of checks.
 
 Run the matrix against the Moodle branches this plugin actually declares support for in `version.php`'s `$plugin->supported` — not every branch Moodle has ever shipped.
 

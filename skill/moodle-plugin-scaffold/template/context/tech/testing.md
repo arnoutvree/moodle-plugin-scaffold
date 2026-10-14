@@ -11,7 +11,7 @@ This file describes the testing strategy for this plugin: PHPUnit unit tests, Be
 
 ## PHPUnit setup
 
-**Initialization** (once per Moodle install):
+**Initialization** (once per Moodle install). First set `$CFG->phpunit_prefix` and `$CFG->phpunit_dataroot` to values that differ from the live site in `config.php`; PHPUnit then runs in its own tables and data directory and does not touch the site data. Run `init.php` again after adding a new test class or generator.
 ```bash
 php admin/tool/phpunit/cli/init.php
 ```
@@ -29,17 +29,21 @@ php admin/tool/phpunit/cli/init.php
 **Minimal test class:**
 ```php
 <?php
-namespace [FRANKENSTYLE]\tests;
+// This file is part of Moodle - https://moodle.org/
+// (full GPL v3 header as in every other PHP file of the plugin)
 
-defined('MOODLE_INTERNAL') || die();
+namespace [FRANKENSTYLE];
 
 /**
  * Test class for [feature].
+ *
  * @package   [FRANKENSTYLE]
- * @copyright (c) [YEAR] [YOUR ORG]
+ * @copyright [YEAR] [YOUR ORG]
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers    \[FRANKENSTYLE]\[class_under_test]
  */
-class [feature]_test extends \advanced_testcase {
+#[\PHPUnit\Framework\Attributes\CoversClass(\[FRANKENSTYLE]\[class_under_test]::class)]
+final class [feature]_test extends \advanced_testcase {
     public function test_something_works(): void {
         $this->resetAfterTest();
         
@@ -52,33 +56,51 @@ class [feature]_test extends \advanced_testcase {
         // Assert
         $this->assertTrue($result);
     }
+
+    public function test_user_without_capability_is_denied(): void {
+        $this->resetAfterTest();
+        $this->setUser($this->getDataGenerator()->create_user());
+
+        $this->expectException(\required_capability_exception::class);
+        some_function_that_requires_a_capability();
+    }
 }
 ```
 
+No `defined('MOODLE_INTERNAL') || die();` in a test file that only holds a class: the sniff `moodle.Files.MoodleInternal.MoodleInternalNotNeeded` rejects it (see `moodle-pitfalls.md`). The namespace is the component namespace (`[FRANKENSTYLE]`), not `...\tests`.
+
 **Key points:**
 - Extend `\advanced_testcase` for tests that need DB reset
-- Extend `\basic_testcase` for pure unit tests (no DB)
+- Extend `\basic_testcase` only for pure logic that touches no Moodle API at all; when in doubt use `\advanced_testcase`
 - Always call `$this->resetAfterTest()` in tests touching the database
 - Use data generator: `$this->getDataGenerator()->create_user()`, `create_course()`, etc.
-- Use assertions: `$this->assertTrue()`, `$this->assertEquals()`, `$this->assertThrows()`
+- Use assertions: `$this->assertTrue()`, `$this->assertSame()`, `$this->assertEquals()`; expect failures with `$this->expectException(...)` (call it before the line that throws)
+- Switch user with `$this->setUser()`, `$this->setAdminUser()` or `$this->setGuestUser()` to test allowed and denied cases
+
+**Supporting Moodle 4.5 (PHPUnit 9.6) and 5.x (PHPUnit 11.5) at once:** put the PHPUnit attributes (`#[CoversClass(...)]`, `#[CoversNothing]`, `#[DataProvider('...')]`) **and** the doc-comment tags (`@covers`, `@dataProvider`) on the same class or method. PHPUnit 9.6 ignores attributes, so with attributes only the data providers hand over no arguments (`ArgumentCountError`) and the phpcs sniff `moodle.PHPUnit.TestCaseCovers` still looks for `@covers`. PHPUnit 11.5 ignores the doc-comment tags as soon as an attribute is present, so both together give no deprecations.
+
+**Keep test classes small.** phpmd flags `TooManyPublicMethods`/`TooManyMethods` in test classes with many scenarios. Decide at the start: either one test class per scenario group (small classes, no suppression), or one class per specification section (scenario numbering stays readable) with `@SuppressWarnings` in the class docblock. In the second case `moodle.Commenting.ValidTags.Invalid` rejects that tag, so wrap the class header in `phpcs:disable`/`phpcs:enable`.
 
 **Run tests:**
 ```bash
-# All tests for this plugin
-vendor/bin/phpunit --filter [FRANKENSTYLE]
+# All tests for this plugin (the testsuite exists after init.php/util.php --buildconfig)
+vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 
-# Single test class
-vendor/bin/phpunit [FRANKENSTYLE]/tests/[feature]_test.php
+# Single test class (path relative to the Moodle root)
+vendor/bin/phpunit [PLUGIN_MAPNAME]/tests/[feature]_test.php
 
 # Single test method
-vendor/bin/phpunit --filter [FRANKENSTYLE]/[feature]_test::test_something_works
+vendor/bin/phpunit --filter '[FRANKENSTYLE]\\[feature]_test::test_something_works'
+
+# Show deprecations and notices from your own code (PHPUnit 10+, so Moodle 5.x; not available on 9.6 / Moodle 4.5)
+vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite --display-notices --display-deprecations
 ```
 
 ---
 
 ## Behat acceptance testing
 
-**Initialization** (once per Moodle install):
+**Initialization** (once per Moodle install). Set `$CFG->behat_wwwroot`, `$CFG->behat_prefix` and `$CFG->behat_dataroot` in `config.php` first. Run `init.php` again after adding a feature file or step definition.
 ```bash
 php admin/tool/behat/cli/init.php
 ```
@@ -92,8 +114,10 @@ php admin/tool/behat/cli/init.php
 
 **Example feature file:**
 ```gherkin
-@[FRANKENSTYLE] @plugin
+@[FRANKENSTYLE]
 Feature: User can translate courses
+  # Add the @javascript tag only to scenarios that really need a browser with JavaScript:
+  # those are slower and less stable.
   In order to support multilingual content
   As a teacher
   I want to translate a course to another language
@@ -104,24 +128,23 @@ Feature: User can translate courses
       | My Course | testcourse |
 
   Scenario: Translate a course title
-    Given I log in as "admin"
-    And I navigate to course "My Course"
+    Given I am on the "My Course" "course" page logged in as "admin"
     When I click on "Translate" "button"
-    And I fill the field "Language" with "Spanish"
-    And I fill the field "Translation" with "Mi Curso"
-    And I click on "Save" "button"
+    And I set the field "Language" to "Spanish"
+    And I set the field "Translation" to "Mi Curso"
+    And I press "Save"
     Then I should see "Translation saved successfully"
 ```
 
 **Step definitions** (if you need custom steps beyond core Moodle):
 ```php
 <?php
-require_once(__DIR__ . '/../../../../lib/behatlib.php');
+require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
 /**
  * Step definitions for [FRANKENSTYLE]
  * @package   [FRANKENSTYLE]
- * @copyright (c) [YEAR] [YOUR ORG]
+ * @copyright [YEAR] [YOUR ORG]
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class behat_[FRANKENSTYLE] extends behat_base {
@@ -155,14 +178,15 @@ For complex test data, create a **generator class:**
 ```php
 <?php
 // tests/generator/lib.php
-namespace [FRANKENSTYLE]\tests;
+// The class name must be exactly <component>_generator and must not be namespaced:
+// get_plugin_generator('[FRANKENSTYLE]') looks for that class in this file.
 
-class generator extends \component_generator_base {
+class [FRANKENSTYLE]_generator extends \component_generator_base {
     public function create_item($options = []): \stdClass {
         global $DB;
         
         $defaults = [
-            'userid' => 2,  // Admin user
+            'userid' => get_admin()->id,
             'name' => 'Test Item',
             'status' => 'active',
         ];
@@ -198,10 +222,9 @@ Each test scenario in `user-stories.md` (Given/When/Then) gets its own generator
 
 ```php
 <?php
-// tests/generator/lib.php
-namespace [FRANKENSTYLE]\tests;
+// tests/generator/lib.php (class <component>_generator, no namespace)
 
-class generator extends \component_generator_base {
+class [FRANKENSTYLE]_generator extends \component_generator_base {
 
     /**
      * Test scenario 1.1 — Active enrolment, no completion yet (user-stories.md, US1)
@@ -259,7 +282,9 @@ A task that changes code is only done when the checks below have been **run and 
 | Behat | for new or changed user flows | yes |
 | `moodle-plugin-ci grunt` / `mustache` | when `amd/src/`, CSS/SCSS or `templates/` changed | yes |
 
-**Runs without a Moodle install:** `phplint`, `phpcs`, `phpcbf`, `phpmd`. The rest (`validate`, `savepoints`, `phpdoc`, `phpunit`, `behat`, `grunt`, `mustache`) needs an installed Moodle with a `config.php`, so run them against a real test site, not a bare git clone.
+**This is the only authoritative list.** The pre-release checklist and the CI workflow point here; they do not keep a list of their own.
+
+**Where it runs:** all `moodle-plugin-ci` commands expect the Moodle checkout that `moodle-plugin-ci install` creates (in CI) or a local test site; use that, not a bare git clone. On a bare clone only `php -l` and a standalone `phpcs --standard=moodle` (from `moodlehq/moodle-cs`) work. Report such a limited check as incomplete (see below).
 
 **No test environment or CI tools available?** Do not skip checks silently. Report which checks could not run and why, run at least `php -l` on the changed files, and say the result is only partly validated. A skipped check is never a passed check.
 
@@ -273,6 +298,12 @@ There is no fixed allowed-warnings threshold: state any deliberately accepted wa
 
 ## Coverage expectations
 
+**Coverage is a signal, not a gate.** One rule for all documents:
+
+- **Required (blocks):** every test scenario in `user-stories.md` has a test, sad path included, and every component in the table below has at least one test.
+- **Target (does not block):** 80% line coverage of the non-trivial code in `classes/`. Measure it with `moodle-plugin-ci phpunit --coverage-text` (needs pcov or xdebug). A lower number is a reason to look at which paths are untested, not to refuse.
+- **Never:** write tests just to reach the number. A test that asserts nothing does not count.
+
 | Component | Test type |
 |---|---|
 | Service classes (managers, processors) | PHPUnit |
@@ -282,12 +313,12 @@ There is no fixed allowed-warnings threshold: state any deliberately accepted wa
 | Permission checks | PHPUnit (test both allowed and denied cases) |
 | Events and observers | PHPUnit |
 
-**Minimum coverage target:** 80% of non-trivial code paths. Dead code (unused imports, unexecuted conditions) doesn't need coverage.
+Dead code (unused imports, conditions that can never be reached) needs no coverage; remove it instead.
 
 ---
 
-## CI/testing in GitHub Actions
+## CI
 
-Use `moodlehq/moodle-plugin-ci` rather than invoking PHPUnit/Behat directly in CI — it handles spinning up a full Moodle install against your plugin first, which bare `vendor/bin/phpunit` cannot do standalone. See [context/workflows/release-process.md](../workflows/release-process.md) (CI/CD section) for the complete workflow.
+Use `moodlehq/moodle-plugin-ci` rather than invoking PHPUnit/Behat directly in CI — it handles spinning up a full Moodle install against your plugin first, which bare `vendor/bin/phpunit` cannot do standalone. Run the checks from the table above in CI. See [context/workflows/release-process.md](../workflows/release-process.md) (CI/CD section) for the complete workflow.
 
 ---

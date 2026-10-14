@@ -35,7 +35,7 @@ If this plugin's design and delivery follows a spec-driven process (written spec
 **Frontend, templates, or AMD modules?** → [context/platform/moodle.md](context/platform/moodle.md) (Output API section)  
 **Replacing a legacy `lib.php` callback?** → [context/platform/moodle.md](context/platform/moodle.md) (Hooks API section) — check whether a Hook already replaces it before adding a new callback  
 **Testing (PHPUnit/Behat)?** → [context/tech/testing.md](context/tech/testing.md)  
-**Static analysis / CI (moodle-plugin-ci, PHPStan)?** → [context/workflows/coding-standards.md](context/workflows/coding-standards.md) (Static analysis section)  
+**Static analysis / CI (moodle-plugin-ci)?** → [context/tech/testing.md](context/tech/testing.md) (Definition of done) and [context/workflows/release-process.md](context/workflows/release-process.md) (CI/CD)  
 **Writing or approving a spec?** → [`moodle-plugin-development`](https://github.com/arnoutvree/moodle-plugin-development) (Phase 2 and 5)  
 **Ready to release?** → [context/workflows/release-process.md](context/workflows/release-process.md)  
 **General rules & conventions?** → [context/workflows/coding-standards.md](context/workflows/coding-standards.md)

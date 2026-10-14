@@ -172,7 +172,7 @@ class MyClass {
 
 **PHPUnit:** Unit and integration tests
 ```bash
-vendor/bin/phpunit --filter [FRANKENSTYLE]
+vendor/bin/phpunit --testsuite [FRANKENSTYLE]_testsuite
 ```
 
 **Behat:** Acceptance tests (browser-based)
@@ -180,12 +180,7 @@ vendor/bin/phpunit --filter [FRANKENSTYLE]
 php admin/tool/behat/cli/run.php --tags=@[FRANKENSTYLE]
 ```
 
-**Linting:** Code quality
-```bash
-mdk phpcs [FRANKENSTYLE]
-# or
-./vendor/bin/phpcs [plugin-dir]
-```
+**Static checks:** `moodle-plugin-ci` runs the full list in [context/tech/testing.md](../tech/testing.md) (Definition of done); do not call `phpcs` on its own.
 
 ---
 
@@ -195,7 +190,6 @@ Optional command-line tool for plugin development:
 ```bash
 mdk init                    # Set up dev environment
 mdk run                     # Start Moodle
-mdk phpcs                   # Lint code
 mdk phpunit                 # Run tests
 ```
 

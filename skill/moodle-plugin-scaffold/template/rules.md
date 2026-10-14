@@ -42,7 +42,7 @@ timestamp: 2026-06-29
 
 - **PHPUnit required** for all business logic (DML queries, capability checks, data transforms)
 - **Behat required** for user-facing workflows (forms, navigation, feature steps)
-- **Test coverage** should reflect importance (critical paths ≥80%, nice-to-haves ≥50%)
+- **Test coverage** is a signal, not a gate: every test scenario and every service class, external function, database operation and capability check has a test; aim for 80% line coverage of non-trivial code (details in `context/tech/testing.md`)
 
 ## Uncertainty Rule
 
