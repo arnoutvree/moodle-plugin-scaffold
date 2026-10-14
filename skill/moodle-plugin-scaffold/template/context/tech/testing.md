@@ -243,6 +243,34 @@ The same principle applies to a Behat scenario (user-facing workflow), but via a
 
 ---
 
+## Definition of done (for the agent)
+
+A task that changes code is only done when the checks below have been **run and passed**, and your reply states the result of each one. Saying "done" without output is not allowed. If a check still fails after two fix attempts, stop and report it.
+
+| Check | When | Blocks |
+|---|---|---|
+| `moodle-plugin-ci phplint` | always, for PHP changes | yes |
+| `moodle-plugin-ci phpcs` (fix first with `phpcbf`) | always, for code changes | yes, 0 errors |
+| `moodle-plugin-ci validate` | always, especially after changing `version.php` or metadata | yes |
+| `moodle-plugin-ci savepoints` | when `db/upgrade.php` or `version.php` changed | yes |
+| `moodle-plugin-ci phpmd` | after larger changes or refactors; ignore parser errors on valid PHP | no, review the findings |
+| `moodle-plugin-ci phpdoc` | for new or changed functions and classes | yes |
+| PHPUnit | for new functionality, bug fixes and refactors | yes |
+| Behat | for new or changed user flows | yes |
+| `moodle-plugin-ci grunt` / `mustache` | when `amd/src/`, CSS/SCSS or `templates/` changed | yes |
+
+**Runs without a Moodle install:** `phplint`, `phpcs`, `phpcbf`, `phpmd`. The rest (`validate`, `savepoints`, `phpdoc`, `phpunit`, `behat`, `grunt`, `mustache`) needs an installed Moodle with a `config.php`, so run them against a real test site, not a bare git clone.
+
+**No test environment or CI tools available?** Do not skip checks silently. Report which checks could not run and why, run at least `php -l` on the changed files, and say the result is only partly validated. A skipped check is never a passed check.
+
+**Order** (fast to slow, so you find problems early): `phplint` and `validate`, then `phpcs`, then `phpmd`, then `phpunit`, then `behat`.
+
+There is no fixed allowed-warnings threshold: state any deliberately accepted warning and its reason in your reply, or add a `phpcs:ignore` with an explanation.
+
+**Test against more than one Moodle version:** run the plugin against at least the lowest and highest version it supports (see `requires` in `version.php`), preferably 4.5 and 5.x.
+
+---
+
 ## Coverage expectations
 
 | Component | Test type |
