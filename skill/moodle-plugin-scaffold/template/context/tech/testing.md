@@ -142,7 +142,12 @@ Feature: User can translate courses
 **Step definitions** (if you need custom steps beyond core Moodle):
 ```php
 <?php
-require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
+// This file is part of Moodle - https://moodle.org/
+// (full GPL v3 header as in every other PHP file of the plugin)
+
+// NOTE: no MOODLE_INTERNAL check here: Behat may load this file before config.php is included.
+
+require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');   // the path Moodle core uses in its own step files; it also holds when the code lives in public/
 
 /**
  * Step definitions for [FRANKENSTYLE]
@@ -159,6 +164,8 @@ class behat_[FRANKENSTYLE] extends behat_base {
     }
 }
 ```
+
+**Plugin entities in Behat.** To use `Given the following "[FRANKENSTYLE] > items" exist:` in a `Background:`, add `tests/generator/behat_[FRANKENSTYLE]_generator.php` with a class `behat_[FRANKENSTYLE]_generator extends behat_generator_base` that defines `get_creatable_entities()` (see "Writing acceptance tests" on moodledev.io).
 
 **Run Behat tests:** (Moodle 5.0 and earlier: leave out `public/`)
 ```bash
@@ -210,6 +217,81 @@ $item = $this->getDataGenerator()->get_plugin_generator('[FRANKENSTYLE]')->creat
     'name' => 'Custom Item',
 ]);
 ```
+
+---
+
+## Testing by topic
+
+What to test per kind of component, with the Moodle helper to use. Every item follows the same rule: a happy path, at least one negative test, and the boundaries (empty array, `null`, zero records, a string at its maximum length).
+
+**Write the test to fail first.** Before you trust a new test, see it fail: write it before the implementation, or break the implementation on purpose. A test you have never seen fail may test nothing. Never weaken an assertion, delete a test or skip one to get a green run, and never hide a runtime error in an empty `try`/`catch`.
+
+**Denied access is tested in PHPUnit, not in Behat.** Behat marks every error page as a failed step, so it cannot assert that an action was refused.
+
+```php
+$this->setUser($this->getDataGenerator()->create_user());   // setAdminUser() / setGuestUser() / setUser(null) also exist
+$this->expectException(\required_capability_exception::class);
+\[FRANKENSTYLE]\manager::delete_item($itemid);
+```
+
+### Scheduled and adhoc tasks
+- Adhoc: queue the task with `\core\task\manager::queue_adhoc_task()`, run it with `$this->runAdhocTasks(\[FRANKENSTYLE]\task\my_task::class)` (or `run_all_adhoc_tasks()`), then assert the result. Both are protected helpers of `advanced_testcase`.
+- Scheduled: create the task object and call `execute()`.
+- Test the failure path as well: what the task does when the record is gone or the external call fails.
+
+### Events, messages and email
+- Events: `$sink = $this->redirectEvents();` ... `$sink->get_events()` ... `$sink->close();`
+- Messages: call `$this->preventResetByRollback()` first (messages are sent after the transaction closes), then `$sink = $this->redirectMessages();`
+- Email: `unset_config('noemailever');` then `$sink = $this->redirectEmails();`
+
+### Privacy provider
+Extend `\core_privacy\tests\provider_testcase`, not `advanced_testcase`: the plain test case does not reset the privacy content writer between tests. Test the metadata (every table that holds user data is described), the export for a user, and the deletion for one user and for a whole context. The test file is `tests/privacy/provider_test.php`.
+
+### External functions (web services)
+Call the function as a user with and without the capability, pass the result through `\external_api::clean_returnvalue()`, and test invalid parameters. Check the context validation: a user without access to the course must be refused.
+
+### Forms
+Call the form's `validation($data, $files)` method with invalid input and assert the returned errors, or submit through `moodleform::mock_submit()`.
+
+### Renderers, templates and JavaScript
+- Test the data a renderable or template gets (`export_for_template()`) in PHPUnit; `moodle-plugin-ci mustache` lints the templates.
+- `moodle-plugin-ci grunt` checks the JavaScript (lint and an up-to-date `amd/build/`). Behaviour that needs a browser goes in a Behat scenario tagged `@javascript`.
+
+### External services and mocking
+Tests never call a real external service, not even in your own environment. Mock the HTTP client with Moodle's dependency injection container, which is reset between tests:
+
+```php
+[$client, $mock, $history] = $this->get_mocked_http_client();   // protected helper of advanced_testcase; check the signature for your Moodle version
+$mock->append(new \GuzzleHttp\Psr7\Response(200, [], json_encode(['name' => 'Colin'])));
+// ...run the code that gets \core\http_client from \core\di::get(), then assert on $history
+```
+
+Without the helper: build a Guzzle `MockHandler`, wrap it in a `HandlerStack` and register `new \core\http_client(['handler' => $stack])` with `\core\di::set(\core\http_client::class, ...)`. Test the failure cases too: an error status, a timeout, malformed JSON, an empty answer.
+
+### AI features
+The model is never part of an automated test: use a stub class that implements the same interface as your provider gateway and returns fixed answers (or throws). Test your own guard code, which is deterministic. Write at least one test for every risk that applies to the feature:
+
+| Risk | What the test asserts |
+|---|---|
+| Prompt injection | Text from a user, or retrieved content, cannot override the system instruction (sanitiser, prompt builder). |
+| Out of scope (jailbreak) | A question outside the intended role gets a refusal or redirect from your guard, not a normal answer. |
+| Data leakage | The system prompt, tool definitions and other users' data are not in the output. |
+| Tool misuse | Only relevant when the model can call tools: a call outside the allowed scope is refused. |
+| Unbounded input | An over-long or repeated input hits the limit or timeout. |
+
+### Upgrade steps
+`moodle-plugin-ci savepoints` checks the structure. Test the content: install the previous release, create data, upgrade, check that the data and settings are intact, and that a second upgrade changes nothing.
+
+### Databases and themes
+- Run the tests on the production database engine and on PostgreSQL (the CI matrix does). Use the `$DB` methods and not raw SQL; raw SQL has to work on both.
+- Check the UI in the default theme and in a custom theme by hand (see `rules.md`).
+
+### Data providers and flaky tests
+- A data provider only returns data. It must not create records: it runs before the database reset.
+- Tag a Behat scenario `@javascript` only when it needs JavaScript; those are slower and less stable. Moodle's runner `run.php --auto-rerun` runs failed scenarios once more and `vendor/bin/behat --rerun` repeats only the failed ones. A scenario that needs a rerun to pass is a problem to fix, not to hide.
+
+### Not covered yet
+Accessibility checks and JavaScript unit tests (Jest) are not described here: no verified Moodle source yet. Check the Moodle developer documentation before adding them.
 
 ---
 
@@ -265,6 +347,8 @@ public function test_scenario_1_1_enrolment_still_active(): void {
 
 The same principle applies to a Behat scenario (user-facing workflow), but via a `Background:` block with concrete data instead of a generator method — the Given lines in the `.feature` file itself are then the fixture.
 
+**Without a generator method:** when the Given state is short, a private helper in the test class is fine. The link to the scenario is the scenario ID, not the generator: put the ID in the class docblock ("test scenarios 4.1, 4.1b") and in the test name (`test_scenario_4_1_...`). A generator method per scenario is the recommended form for long or reusable setup, not a requirement.
+
 **Gherkin discipline:** use `Given`, `When` and `Then` exactly once per scenario; additional steps within the same phase go via `And`/`But`. This is Moodle's own Behat convention and ties directly into the "one scenario per outcome" rule — a scenario with a second `When` is effectively testing two things at once.
 
 ---
@@ -293,6 +377,8 @@ A task that changes code is only done when the checks below have been **run and 
 
 **Order** (fast to slow, so you find problems early): `phplint` and `validate`, then `phpcs`, then `phpmd`, then `phpunit`, then `behat`.
 
+**Make a new test fail first** (red-first): write it before the implementation, or break the implementation on purpose, and state in your reply that you saw it fail. Never weaken an assertion, delete a test or skip one to get a green run.
+
 There is no fixed allowed-warnings threshold: state any deliberately accepted warning and its reason in your reply, or add a `phpcs:ignore` with an explanation.
 
 **Test against more than one Moodle version:** run the plugin against at least the lowest and highest version it supports (see `requires` in `version.php`), preferably 4.5 and 5.x.
@@ -315,6 +401,11 @@ There is no fixed allowed-warnings threshold: state any deliberately accepted wa
 | User-facing workflows | Behat (e.g., "admin translates a course") |
 | Permission checks | PHPUnit (test both allowed and denied cases) |
 | Events and observers | PHPUnit |
+| Scheduled and adhoc tasks | PHPUnit |
+| Privacy provider | PHPUnit (`provider_testcase`) |
+| Form validation | PHPUnit |
+| Code that calls an external service | PHPUnit with a mocked HTTP client or stub |
+| AI guard code (sanitiser, limits, permissions) | PHPUnit, one test per applicable risk |
 
 Dead code (unused imports, conditions that can never be reached) needs no coverage; remove it instead.
 
