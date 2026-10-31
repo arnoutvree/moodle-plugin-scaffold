@@ -1,6 +1,6 @@
 ---
 name: Plan
-description: Architecture and build decisions for Phase 4a — file structure, data model, integration points, security & authorization, open decisions and spikes (fill in per project)
+description: Architecture and build decisions for Phase 4a — file structure, data model, integration points, security & authorization, considered and rejected, open decisions and spikes (fill in per project)
 type: plan
 created: 2026-09-23
 timestamp: 2026-09-23
@@ -46,11 +46,15 @@ timestamp: 2026-09-23
 
 [APIs/packages, sync vs. async, rate-limit approach. "N/A" if there are none.]
 
-## 3. Open decisions
+## 3. Considered and rejected
+
+[One or two lines per seriously considered alternative: what it was and why it was dropped. A guardrail, so a later AI session or colleague doesn't propose again what was already rejected. Not a record of the discussion, only the outcome. "N/A" if there were no serious alternatives.]
+
+## 4. Open decisions
 
 [Decisions that need confirming before Phase 4b — with a proposal and the reasoning behind it, not just the question.]
 
-## 4. Spikes
+## 5. Spikes
 
 [One per unconfirmed technical risk at implementation level (like Phase 1a, but after design). "N/A" if there are none.]
 
